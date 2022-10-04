@@ -1,0 +1,449 @@
+---
+title: "Association of stress on eating competence in mothers during pregnancy and six months postpartum"
+output: html_document
+---
+```{r}
+library(ggplot2)
+library(plyr)
+library(psych)
+library(tidyverse)
+library(vroom)
+library(dplyr)
+
+library(ggpubr)
+library(lm.beta) #this is the package for beta values from lm
+library(yhat)
+
+library(stats)
+library(nlme)
+library(lmtest)
+library(car)
+library(emmeans)
+```
+
+#here be the loaded data sets
+```{r}
+SCORES_POST4Ryesa <-vroom("~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/SCORES_POST4Ryesa.csv")
+SCORES_PREG4Ryesa <- vroom("~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/SCORES_PREG4Ryesa.csv")
+DEMOS_PREG <- vroom("~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/MOMA_Preg.csv")
+DEMOS_POST <-vroom("~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/moma_post.csv")
+SES<-vroom("~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/SES_PREG.csv")
+base_preg<-vroom("~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/BASE_PREG.csv")
+```
+
+
+```{r}
+#SCORES_POST4Ryesa <-read.table("C:/Users/ryesaam/Documents/SCHOOL/UNC/Fourth Year/honors thesis/DATA SETS/SCORES_POST4Ryesa.csv", header=TRUE, sep=",")
+names(SCORES_POST4Ryesa)
+
+data_post<-SCORES_POST4Ryesa
+data_preg<-SCORES_PREG4Ryesa
+# Use visit one for pregnancy 
+```
+
+```{r}
+names(DEMOS_PREG)
+demo_preg<-c("PATID","AGE_Y","MomA_BMI","VISNO","MomA_BMICH")
+names(DEMOS_PREG)
+dim(DEMOS_PREG)
+preg_demos<-DEMOS_PREG[demo_preg]
+dim(preg_demos)
+
+
+
+preg_demos$VISNO<-as.factor(preg_demos$VISNO)
+summary(preg_demos$VISNO)
+preg_demos0<-subset(preg_demos, preg_demos$VISNO == "01")
+summary(preg_demos0$VISNO)
+preg_demos0$VISNO<-factor(preg_demos0$VISNO) #getting only the factor of choice
+
+
+names(DEMOS_POST)
+demo_post<-c("PATID","MomA_BMI","VISNO","MomA_BMICH")
+post_demos<-DEMOS_POST[demo_post]
+dim(post_demos)
+
+
+post_demos$VISNO<-as.factor(post_demos$VISNO)
+post_demos0<-subset(post_demos, post_demos$VISNO == "2")
+summary(post_demos0$VISNO)
+post_demos0$VISNO<-factor(post_demos0$VISNO) #getting only the factor of choice
+post_demos0$MomA_BMI<-as.numeric(as.character(post_demos0$MomA_BMI))
+summary(post_demos0$MomA_BMI)
+```
+
+
+
+```{r}
+names(data_post)
+myvars<-c("PATID","VISNO","EC","EC_ATTITU","EC_ACCEPT","EC_REGUL","EC_CONTXT","EC_PCTCOMP","STRESS")
+post_vars<-data_post[myvars]
+dim(post_vars)
+head(post_vars)
+
+post_vars$VISNO<-as.factor(post_vars$VISNO)
+post_vars0<-subset(post_vars, post_vars$VISNO == "2")
+summary(post_vars0$VISNO)
+post_vars0$VISNO<-factor(post_vars0$VISNO) #getting only the factor of choice
+```
+
+```{r}
+names(data_preg)
+data_preg<-SCORES_PREG4Ryesa
+myvarspreg<-c("PATID","VISNO","EC","EC_ATTITU","EC_ACCEPT","EC_REGUL","EC_CONTXT","EC_PCTCOMP","STRESS")
+preg_vars<-data_preg[myvarspreg]
+dim(preg_vars)
+names(preg_vars)
+summary(preg_vars)
+names(preg_vars)
+preg_vars$VISNO<-as.factor(preg_vars$VISNO)
+
+preg_vars0<-subset(preg_vars, preg_vars$VISNO == "01")
+summary(preg_vars0$VISNO)
+preg_vars0$VISNO<-factor(preg_vars0$VISNO) #getting only the factor of choice
+```
+
+```{r}
+POST<-join(post_vars0, post_demos0)
+dim(POST)
+summary(POST)
+
+summary(preg_demos0)
+dim(preg_demos0)
+summary(preg_demos0$MomA_BMI)
+dim(preg_demos0)
+PRE<-join(preg_vars0, preg_demos0)
+dim(PRE)
+describe(PRE$MomA_BMI)
+
+
+dim(POST)
+summary(POST)
+
+POST$MomA_BMI<-as.numeric(as.character(POST$MomA_BMI))
+POST$bmi<-POST$MomA_BMI
+
+str(POST)
+summary(POST)
+```
+
+```{r}
+summary(as.numeric(as.character(post_demos0$MomA_BMI)))
+```
+
+
+
+```{r}
+describe(POST$EC)
+
+POST1<-POST[!is.na(POST$EC),]
+POST1
+POST1$MomA_BMI<-as.numeric(POST1$MomA_BMI)
+
+names(POST1)
+summary(POST1$MomA_BMI)
+describe(POST1$MomA_BMI)
+
+
+
+PRE1<-PRE[!is.na(PRE$EC),]
+dim(PRE1)
+PRE1$MomA_BMI
+PRE1<-PRE1[!is.na(PRE1$STRESS),]
+describe(PRE1$MomA_BMI)
+```
+
+
+```{r}
+age_col<- PRE1$AGE_Y
+PATID<- PRE1$PATID
+sep= cbind(PATID,age_col)
+sep<-as.data.frame(sep)
+head(sep)
+```
+
+```{r}
+drops <- c("AGE_Y")
+PRE1<-PRE1[ , !(names(PRE1) %in% drops)]
+```
+
+```{r}
+colnames(PRE1)<-c("PATID","VISNO_pre","EC_pre","EC_ATTITU_pre","EC_ACCEPT_pre","EC_REGUL_pre","EC_CONTXT_pre","EC_PCTCOMP_pre","STRESS_pre","MomA_BMI_pre","MomA_BMICH_pre")
+colnames(POST1)<-c("PATID","VISNO_post","EC_post","EC_ATTITU_post","EC_ACCEPT_post","EC_REGUL_post","EC_CONTXT_post","EC_PCTCOMP_post","STRESS_post","MomA_BMI_post","MomA_BMICH_post", "bmi")
+```
+
+
+
+```{r}
+library(stringr)
+PRE1$PATID<-str_sub(PRE1$PATID, 3)
+
+
+df<-join(PRE1, POST1)
+dim(df)
+str(df)
+```
+
+```{r}
+describe(df)
+#write.csv(df,"C:/Users/ryesaam/Documents/SCHOOL/UNC/Fourth Year/honors thesis/DATA SETS/FINAL_DF.csv", sep=",", row.names = FALSE)
+```
+
+#SES and control vars
+```{r}
+names(SES)
+ses_vars<-c("PATID","DEM_RACEETH","DEM_RACE","DEM_WIC","DEM_HHINC","DEM_ETHNICITY")
+ses_data<-SES[ses_vars]
+describe(ses_data)
+
+ses_age<-join(sep,ses_data)
+describe(ses_age)
+```
+
+```{r}
+ses_age$PATID<-str_sub(ses_age$PATID, 3)
+wide_df<-join(df,ses_age)
+describe(wide_df)
+write.csv(wide_df, "~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/gracedf.csv", row.names = F, sep = ",")
+```
+
+```{r}
+parity_var<-c("PATID","PARITY")
+parity<-base_preg[parity_var]
+head(parity)
+
+parity$PATID<-str_sub(parity$PATID, 3)
+```
+
+
+
+#HERE BE MODELS
+# Long here :)
+```{r}
+names(wide_df)
+head(wide_df)
+describe(as.numeric(wide_df$age_col))
+
+dim(wide_df)
+
+str(wide_df)
+
+long_df<-reshape(wide_df, varying=list(VISNO= c(2,12), EC= c(3,13), EC_ATTITU= c(4,14), EC_ACCEPT=c(5,15), EC_REGUL=c(6,16), EC_CONTXT=c(7,17), EC_PCTCOMP=c(8,18),STRESS=c(9,19),MomA_BMI=c(10,20),MomA_BMICH=c(11,21)), 
+        v.names=c("VISNO", "EC", "EC_ATTITU", "EC_ACCEPT","EC_REGUL","EC_CONTXT","EC_PCTCOMP","STRESS","MomA_BMI","MomA_BMICH"), 
+          # that was needed after changed 'varying' arg to a list to allow 'times' 
+        direction="long",  
+        times=1:2,        # substitutes number for T1 and T2
+        timevar="times")  # to name the time col
+
+describe(long_df)
+long_df$PATID<-as.factor(long_df$PATID)
+long_df$VISNO<-as.factor(long_df$VISNO)
+long_df$times<-as.factor(long_df$times)
+long_df$DEM_RACEETH<-as.factor(long_df$DEM_RACEETH)
+long_df$DEM_RACE<-as.factor(long_df$DEM_RACE)
+long_df$DEM_WIC<-as.factor(long_df$DEM_WIC)
+long_df$DEM_HHINC<-as.factor(long_df$DEM_HHINC)
+long_df$DEM_ETHNICITY<-as.factor(long_df$DEM_ETHNICITY)
+describeBy(long_df$MomA_BMI, long_df$times)
+#write.csv(long_df,"C:/Users/ryesaam/Documents/SCHOOL/UNC/Fourth Year/honors thesis/DATA SETS/final_df_long.csv", sep=",", row.names = FALSE)
+```
+
+```{r}
+long_df2<-join(long_df, parity)
+head(long_df2)
+summary(long_df2$DEM_ETHNICITY)
+```
+
+
+```{r}
+library(ggpubr)
+library(lm.beta) #this is the package for beta values from lm
+library(yhat)
+
+library(stats)
+library(nlme)
+library(lmtest)
+library(car)
+library(emmeans)
+library(psych)
+```
+
+## Summary statistics ##
+```{r}
+test_long_df2<-long_df2[complete.cases(long_df2$MomA_BMI),]
+dim(test_long_df2)
+long_df2$age_col<-as.numeric(long_df2$age_col)
+table(test_long_df2$DEM_HHINC,test_long_df2$times)
+describeBy(test_long_df2$MomA_BMI, test_long_df2$times)
+head(test_long_df2)
+```
+
+```{r}
+tetst<- lm(EC ~ as.factor(times), data=test_long_df2, na.action=na.exclude )
+tetst.emm.s <- emmeans(tetst, "times")
+pairs(tetst.emm.s)
+```
+
+
+
+## FINAL MODEL ##
+```{r}
+m0<-lme(EC~STRESS*as.factor(times)+DEM_RACE+MomA_BMI+DEM_ETHNICITY+DEM_HHINC+DEM_WIC+PARITY, data=test_long_df2, method ="REML", na.action=na.exclude, random = ~times|PATID)
+
+m0b <- lm(EC~STRESS*as.factor(times)+DEM_RACE+MomA_BMI+DEM_ETHNICITY+DEM_HHINC+DEM_WIC+PARITY, data=test_long_df2, na.action=na.exclude) #fixed effects only
+lm.beta(m0b)
+
+summary(m0)
+
+vif(m0)
+```
+
+# estimating the difference of the slopes
+```{r}
+emtrends(m0,  ~ as.factor(times), var="STRESS")
+-0.411 - (-0.235)
+(0.411 - 0.235)/((0.411+0.235)/2)
+emtrends(m0, pairwise ~ as.factor(times), var="STRESS")
+```
+
+
+# THIS CODE IS MAKING FIGURES
+```{r}
+cbPalette <- cbbPalette <- c("#648EFB", "#785EF0", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+
+```
+
+# Figure 1.
+```{r}
+p1<-ggplot(test_long_df2, aes(x=STRESS, y=EC, color = times)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth(method=lm,   # Add linear regression line
+                se=TRUE) + scale_colour_manual(values=cbPalette)+theme_classic()
+p1
+```
+
+# POST HOC
+# Loading diet data
+```{r}
+diet_preg<-vroom("~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/HEI2015SCORE_UNC_2020_PREG_NX.csv")
+diet_post<-vroom("~/University of Wyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/HEI2015SCORE_UNC_2020_POST_NX.CSV")
+
+```
+
+```{r}
+head(long_df)
+head(diet_preg)
+
+diet_preg$Patid<-str_sub(diet_preg$Patid, 3)
+diet_post$Patid<-str_sub(diet_post$Patid, 3)
+
+diet<-join(diet_preg, diet_post)
+head(diet)
+diet$PATID<-diet$Patid
+
+inter<-c("PATID", "HEI2015_post", "HEI2015_preg")
+diet_df<-diet[inter]
+head(diet_df)
+
+library(reshape2)
+
+long_diet_df<-melt(diet_df, id.vars = "PATID", measure.vars = c("HEI2015_post", "HEI2015_preg"))
+
+library(plyr)
+long_diet_df$times <- revalue(long_diet_df$variable, c("HEI2015_post"="2", "HEI2015_preg"="1"))
+long_diet_df$HEI <- long_diet_df$value
+```
+
+```{r}
+long_df_hei<-join(long_diet_df, long_df2)
+names(long_df_hei)
+```
+
+
+```{r}
+head(long_df_hei)
+describeBy(long_df_hei$EC, group = long_df_hei$times)
+```
+
+
+
+
+```{r}
+long_df_hei$times <- as.factor(long_df_hei$times)
+
+mh0<-lme(HEI~EC*times*STRESS+DEM_RACE+MomA_BMI+DEM_ETHNICITY+DEM_HHINC+DEM_WIC, data=long_df_hei, method ="REML", na.action=na.exclude, random = ~times|PATID)
+summary(mh0)
+emmeans(mh0, pairwise ~ DEM_HHINC, adjust = "fdr")
+
+fixedh0<-lm(HEI~EC*as.factor(times)*STRESS+DEM_RACE+MomA_BMI+DEM_ETHNICITY+DEM_HHINC+DEM_WIC, data=long_df_hei,  na.action=na.exclude)
+lm.beta(fixedh0)
+vif(fixedh0)
+```
+# BMI mediation
+```{r}
+library(mediation)
+```
+# Mediation analysis during pregnancy and postpartum
+```{r}
+test_wide<-wide_df[complete.cases(wide_df$MomA_BMI_post),]
+
+head(wide_df)
+```
+
+
+```{r}
+med0<-lm(EC_pre~STRESS_pre, test_wide)
+summary(med0)
+lm.beta(med0)
+
+med2<-lm(MomA_BMI_pre~STRESS_pre, test_wide)
+summary(med2)
+lm.beta(med2)
+
+med3<-lm(EC_pre~STRESS_pre+MomA_BMI_pre, test_wide)
+summary(med3)
+lm.beta(med3)
+
+results = mediation::mediate(med2, med3, treat='STRESS_pre', mediator='MomA_BMI_pre', boot=T)
+summary(results)
+```
+
+```{r}
+0.18826*-0.26606
+0.1843427*-0.2193652
+```
+
+
+```{r}
+test_wide<-wide_df[complete.cases(wide_df$MomA_BMI_post),]
+
+head(wide_df)
+
+med02<-lm(EC_post~STRESS_post+STRESS_pre+EC_pre, test_wide)
+summary(med02)
+lm.beta(med02)
+
+med22<-lm(MomA_BMI_post~STRESS_post+STRESS_pre+MomA_BMI_pre, test_wide)
+summary(med22)
+lm.beta(med22)
+
+med32<-lm(EC_post~STRESS_post+MomA_BMI_post+EC_pre+MomA_BMI_pre, test_wide)
+summary(med32)
+lm.beta(med32)
+
+results2 =mediation::mediate(med22, med32, treat='STRESS_post', mediator='MomA_BMI_post', boot=T)
+summary(results2)
+```
+
+```{r}
+-0.25137555*-0.4011027
+```
+
+
+
+```{r}
+#save.image(file = "/Users/gracer/Library/CloudStorage/OneDrive-SharedLibraries-UniversityofWyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/gracedat.Rdata")
+#load(file = "/Users/gracer/Library/CloudStorage/OneDrive-SharedLibraries-UniversityofWyoming/M2AENAD Lab - Documents/RESEARCH/SPROUTS-PEAS/Stress_EC/data/gracedat.Rdata")
+```
+
